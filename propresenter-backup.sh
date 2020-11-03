@@ -1,19 +1,50 @@
 #!/bin/bash
 
-# Variables
-
 # Directory Paths
-librarypath=~/"Documents/ProPresenter6"
-usersettings=~/"Library/Application Support/RenewedVision/ProPresenter6"
-sharedsettings="/Users/Shared/Renewed Vision Application Support/ProPresenter6"
-usermedia=~/"Renewed Vision Media"
-sharedmedia="/Users/Shared/Renewed Vision Media"
+if [ -n "$librarypath" ]; then
+	true
+else
+	librarypath=~/"Documents/ProPresenter6"
+fi
+if [ -n "$usersettings" ]; then
+	true
+else
+	usersettings=~/"Library/Application Support/RenewedVision/ProPresenter6"
+fi
+if [ -n "$sharedsettings" ]; then
+	true
+else
+	sharedsettings="/Users/Shared/Renewed Vision Application Support/ProPresenter6"
+fi
+if [ -n "$usermedia" ]; then
+	true
+else
+	usermedia=~/"Renewed Vision Media"
+fi
+if [ -n "$sharedmedia" ]; then
+	true
+else
+	sharedmedia="/Users/Shared/Renewed Vision Media"
+fi
+# Where rclone will save ProPresenter backups to.
+# Make sure that you set this.
+if [ -n "$rcdest" ]; then
+	true
+else
+	rcdest=""
+fi
+# Leave blank to pull rclone binary from default $PATH.
+if [ -n "$rcpath" ]; then
+	true
+else
+	rcpath=""
+fi
 
 # System Name
-systemname=`hostname`
+systemname=$(hostname)
 
 # Program Variables
-libraryname=`echo $(basename "$librarypath")`
+libraryname=$(basename "$librarypath")
 libraryfailcount=0
 settingsfailcount=0
 mediafailcount=0
@@ -21,94 +52,89 @@ mediafailcount=0
 function backup_start {
 	echo "Backing Up $1"
 }
-
 function backup_success {
 	echo "Successfully Backed Up $1"
 }
-
 function backup_fail {
 	echo "Failed to Back Up $1"
 }
-
 function backup_does_not_exist {
 	echo "$1 does not exist, skipping."
 }
 
-read -p "Press return to start backup"
+if [ "$rcdest" == "" ]; then
+	echo "Please ensure that \$rcdest is set either in environment variables or manually in the script."
+	exit
+fi
 
 # Library
-currentpath="$librarypath"
-if [ -d "$currentpath" ]; then
-	backup_start "$currentpath"
-	if rclone copy "$currentpath" "OneDrive:ProPresenter Backup/$systemname/Libraries/$libraryname"; then
-		backup_success "$currentpath"
+if [ -d "$librarypath" ]; then
+	backup_start "$librarypath"
+	if "$rcpath"rclone copy --exclude=".DS_Store" "$librarypath" "$rcdest/$systemname/Libraries/$libraryname"; then
+		backup_success "$librarypath"
 	else
-		let "libraryfailcount++"
-		backup_fail "$currentpath"
+		(( libraryfailcount++ )) || true
+		backup_fail "$librarypath"
 	fi
 else
-	let "libraryfailcount++"
-	backup_does_not_exist "$currentpath"
+	(( libraryfailcount++ )) || true
+	backup_does_not_exist "$librarypath"
 fi
 
 # Per User Settings
-currentpath="$usersettings"
-if [ -d "$currentpath" ]; then
-	backup_start "$currentpath"
-	if rclone copy --exclude="/cache/" "$currentpath" "OneDrive:ProPresenter Backup/$systemname/Settings/User"; then
-		backup_success "$currentpath"
+if [ -d "$usersettings" ]; then
+	backup_start "$usersettings"
+	if "$rcpath"rclone copy --exclude=".DS_Store" --exclude="/cache/" "$usersettings" "$rcdest/$systemname/Settings/User"; then
+		backup_success "$usersettings"
 	else
-		let "settingsfailcount++"
-		backup_fail "$currentpath"
+		(( settingsfailcount++ )) || true
+		backup_fail "$usersettings"
 	fi
 else
-	let "settingsfailcount++"
-	backup_does_not_exist "$currentpath"
+	(( settingsfailcount++ )) || true
+	backup_does_not_exist "$usersettings"
 fi
 
 # All User Settings
-currentpath="$sharedsettings"
-if [ -d "$currentpath" ]; then
-	backup_start "$currentpath"
-	if rclone copy --exclude="/cache/" "$currentpath" "OneDrive:ProPresenter Backup/$systemname/Settings/Shared"; then
-		backup_success "$currentpath"
+if [ -d "$sharedsettings" ]; then
+	backup_start "$sharedsettings"
+	if "$rcpath"rclone copy --exclude=".DS_Store" --exclude="/cache/" "$sharedsettings" "$rcdest/$systemname/Settings/Shared"; then
+		backup_success "$sharedsettings"
 	else
-		let "settingsfailcount++"
-		backup_fail "$currentpath"
+		(( settingsfailcount++ )) || true
+		backup_fail "$sharedsettings"
 	fi
 else
-	let "settingsfailcount++"
-	backup_does_not_exist "$currentpath"
+	(( settingsfailcount++ )) || true
+	backup_does_not_exist "$sharedsettings"
 fi
 
 # Per User Media
-currentpath="$usermedia"
-if [ -d "$currentpath" ]; then
-	backup_start "$currentpath"
-	if rclone copy "$currentpath" "OneDrive:ProPresenter Backup/$systemname/Media/User"; then
-		backup_success "$currentpath"
+if [ -d "$usermedia" ]; then
+	backup_start "$usermedia"
+	if "$rcpath"rclone copy --exclude=".DS_Store" "$usermedia" "$rcdest/$systemname/Media/User"; then
+		backup_success "$usermedia"
 	else
-		let "mediafailcount++"
-		backup_fail "$currentpath"
+		(( mediafailcount++ )) || true
+		backup_fail "$usermedia"
 	fi
 else
-	let "mediafailcount++"
-	backup_does_not_exist "$currentpath"
+	(( mediafailcount++ )) || true
+	backup_does_not_exist "$usermedia"
 fi
 
 # All User Media
-currentpath="$sharedmedia"
-if [ -d "$currentpath" ]; then
-	backup_start "$currentpath"
-	if rclone copy "$currentpath" "OneDrive:ProPresenter Backup/$systemname/Media/Shared"; then
-		backup_success "$currentpath"
+if [ -d "$sharedmedia" ]; then
+	backup_start "$sharedmedia"
+	if "$rcpath"rclone copy --exclude=".DS_Store" "$sharedmedia" "$rcdest/$systemname/Media/Shared"; then
+		backup_success "$sharedmedia"
 	else
-		let "mediafailcount++"
-		backup_fail "$currentpath"
+		(( mediafailcount++ )) || true
+		backup_fail "$sharedmedia"
 	fi
 else
-	let "mediafailcount++"
-	backup_does_not_exist "$currentpath"
+	(( mediafailcount++ )) || true
+	backup_does_not_exist "$sharedmedia"
 fi
 
 # Warn User If Library Could Not Be Backed Up
